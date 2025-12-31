@@ -1,0 +1,349 @@
+{
+  "name": "Create_Email_Draft_With_Rag_Model",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "readStatus": "unread"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -2240,
+        688
+      ],
+      "id": "e0c70fb9-74bd-4009-bce9-c9e3703c61ba",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "yQ16ib4VcMBfEjJp",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $json.id }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -2016,
+        688
+      ],
+      "id": "23d90316-f3d3-4185-b286-70ae0384eea9",
+      "name": "Mark a message as read",
+      "webhookId": "f6bbdc4a-b3bc-4931-ba2d-8c012729221f",
+      "retryOnFail": true,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "yQ16ib4VcMBfEjJp",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Gmail Trigger').item.json.text }}",
+        "options": {
+          "systemMessage": "You must use the qdrant tool to search for information for all requests. \n\nYou must use the following template to respond to all requests.\nDear [Customer Name],\n\nThank you for reaching out to HeiFinance Bank.\n\n[Answer to customer’s specific query. Ensure details are accurate and taken from the official product fact sheet. If applicable, include relevant fees, or exceptions.]\n\nFor your reference:\n• [Key detail 1]  \n• [Key detail 2]  \n• [Key detail 3, if needed]  \n\nIf you have any further questions, please do not hesitate to contact us at cust.service@heifinance.com\n\nWarm regards,  \n[Your Full Name]  \nCustomer Service Officer  \nHeiFinance Bank"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -1744,
+        688
+      ],
+      "id": "03470809-4bbb-474a-a37e-b77b1c6ed11a",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.threadId }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -1664,
+        912
+      ],
+      "id": "b9822428-77aa-4dfa-9396-f24956070ea6",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1792,
+        912
+      ],
+      "id": "9fb2544c-6704-41b6-89c8-42b23ffde1d6",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "6iks2HO5Pg4A3HpX",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Work with data from HeiFinance",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "HeiFinance",
+          "mode": "list",
+          "cachedResultName": "HeiFinance"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        -1536,
+        912
+      ],
+      "id": "bb18052d-be02-42a1-8815-3203e5b857a5",
+      "name": "Qdrant Vector Store1",
+      "credentials": {
+        "qdrantApi": {
+          "id": "00hJcXqGG8vHKorQ",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1456,
+        1120
+      ],
+      "id": "0f161470-eb5b-40d1-86bf-dfed71d14e85",
+      "name": "Embeddings Google Gemini1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "6iks2HO5Pg4A3HpX",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $('Gmail Trigger').item.json.subject }}",
+        "message": "={{ $json.output }}",
+        "options": {
+          "threadId": "={{ $('Gmail Trigger').item.json.threadId }}",
+          "sendTo": "={{ $('Gmail Trigger').item.json.from.value[0].address }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1168,
+        688
+      ],
+      "id": "b7097a86-6965-4781-9a05-fc254d457757",
+      "name": "Create a draft",
+      "webhookId": "48ff2256-cf1d-4564-bf1d-de461c2990f1",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "yQ16ib4VcMBfEjJp",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Gmail Trigger": [
+      {
+        "json": {
+          "id": "19b6df50323916b9",
+          "threadId": "19b6df50323916b9",
+          "labelIds": [
+            "UNREAD",
+            "IMPORTANT",
+            "CATEGORY_PERSONAL",
+            "INBOX"
+          ],
+          "sizeEstimate": 6079,
+          "headers": {
+            "delivered-to": "Delivered-To: weilian.low90@gmail.com",
+            "received": "Received: from mail-sor-f41.google.com (mail-sor-f41.google.com. [209.85.220.41])\r\n        by mx.google.com with SMTPS id af79cd13be357-8beead7d68fsor129438585a.0.2025.12.29.22.32.12\r\n        for <weilian.low90@gmail.com>\r\n        (Google Transport Security);\r\n        Mon, 29 Dec 2025 22:32:12 -0800 (PST)",
+            "x-received": "X-Received: by 2002:a05:6214:4e07:b0:888:6ea5:a8f2 with SMTP id\r\n 6a1803df08f44-88d82234a02mr472221496d6.29.1767076331675; Mon, 29 Dec 2025\r\n 22:32:11 -0800 (PST)",
+            "arc-seal": "ARC-Seal: i=1; a=rsa-sha256; t=1767076332; cv=none;\r\n        d=google.com; s=arc-20240605;\r\n        b=aEhuEOHF01FGajBoZKKb8zT0WQwGJ/AHxReYrcFLMeqaByH9Q087HKzRGmt61sGui/\r\n         HId1HPXHQIpF4lnZES4wUPTBHe9eDELyJBpUT4BFjyYpHNOoDyfNuhBSee32Wk+0djWn\r\n         mTAaAeAtXimXr4mvFgXZBRiumBs8kVXVus49b237yjKdqDXLINtEbDsfv57q6AJ1fC4f\r\n         8MHqh8bDs/MmHlTEST0zqj3D33QpPbBsHI7cm8v/AqM384+zn112wo2TJuBGon69aYrx\r\n         ycRWUnRlIYUZZK0hBszXwYDCL8CkGSiZlaRdfT0qZmYiuaxL8MIfkelOcAR1S6DFTXt8\r\n         Dg3g==",
+            "arc-message-signature": "ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;\r\n        h=to:subject:message-id:date:from:mime-version:dkim-signature;\r\n        bh=3ggiqTBMva4joU3vlmpsJiU8jQzVFAUwhNnzYCs9ZRA=;\r\n        fh=eS//LowxUcw48gw8hsyf4tjldMqYgZXBsLWazEApZxc=;\r\n        b=Kg/kcg3mMbYrEQFZ66sA9g0qsZWF2/Ry/TDGzTMXJlXwfJTYncXDPQUO16w7tbqpPu\r\n         RsFmbEurwPRa0+7ihEnxYn4lnZjCBLufI6Fs3jIrqgiZvOrS3jymrd0YliQOGDPuIo8P\r\n         cV3PhSxGj00j524gVERgfG7JGl1ATBnUUb2Le4Ai+0dE7EQjUfxqnI9f/RTg0te2xT1D\r\n         WfkrvHIiHPkwwX0JS1CmZsmh+LvwJCXGr5d3gWueRrdlffHtwh4rr8Rq5lf0a9fO2yDO\r\n         f9mMXP5RjXWNRrH9d59SyyXYTqIKK+5CH/73GUl+O3dwgNgeUoO/YGtaAw6UOz2vZJKF\r\n         cxjw==;\r\n        dara=google.com",
+            "arc-authentication-results": "ARC-Authentication-Results: i=1; mx.google.com;\r\n       dkim=pass header.i=@gmail.com header.s=20230601 header.b=d2p+GIHq;\r\n       spf=pass (google.com: domain of weilian.low88@gmail.com designates 209.85.220.41 as permitted sender) smtp.mailfrom=weilian.low88@gmail.com;\r\n       dmarc=pass (p=NONE sp=QUARANTINE dis=NONE) header.from=gmail.com;\r\n       dara=pass header.i=@gmail.com",
+            "return-path": "Return-Path: <weilian.low88@gmail.com>",
+            "received-spf": "Received-SPF: pass (google.com: domain of weilian.low88@gmail.com designates 209.85.220.41 as permitted sender) client-ip=209.85.220.41;",
+            "authentication-results": "Authentication-Results: mx.google.com;\r\n       dkim=pass header.i=@gmail.com header.s=20230601 header.b=d2p+GIHq;\r\n       spf=pass (google.com: domain of weilian.low88@gmail.com designates 209.85.220.41 as permitted sender) smtp.mailfrom=weilian.low88@gmail.com;\r\n       dmarc=pass (p=NONE sp=QUARANTINE dis=NONE) header.from=gmail.com;\r\n       dara=pass header.i=@gmail.com",
+            "dkim-signature": "DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;\r\n        d=gmail.com; s=20230601; t=1767076332; x=1767681132; dara=google.com;\r\n        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject\r\n         :date:message-id:reply-to;\r\n        bh=3ggiqTBMva4joU3vlmpsJiU8jQzVFAUwhNnzYCs9ZRA=;\r\n        b=d2p+GIHqzp3RJp3clLVh4WI8l0RMsoY8CL4iCiCNy8EuzFV36i6rrv8qBsHa42O1c4\r\n         l8/CKaYgmQvKZSRG4OEk8jy4JacheGA5duSDSI6W73cL9gdGPi7vD7CH3p6UsZTSkD5H\r\n         iV/0UD8imDwy5FsTHQgkffiGjz7SI1VigU+XErNM931ErgXd1R0py2xEH4M9fOzosjRz\r\n         mqx47APgn4U8FBEUNitu559QQL2Ytzg8JdcyAWW+4mMVuMUsF8JnspZm0bP8cM+OTvKN\r\n         2URuozkmfgFkVWl7z5C/FXV6ZopJFQ7ksrGdRQo0YKZs80Sj7pYPIO9px236YtFcOvTg\r\n         w0+w==",
+            "x-google-dkim-signature": "X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;\r\n        d=1e100.net; s=20230601; t=1767076332; x=1767681132;\r\n        h=to:subject:message-id:date:from:mime-version:x-gm-gg\r\n         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;\r\n        bh=3ggiqTBMva4joU3vlmpsJiU8jQzVFAUwhNnzYCs9ZRA=;\r\n        b=xN9WZi3XWiY5CYAsbg0yhueHPY0IqzFcCaHm5Y7Wa6nSr4XbiWJf1jrq/ZIOq7/6+t\r\n         1QXlHmhEdgpvbO53Ay9C7EIqJMDYo8hoGGoJ3sDXFQTWBMOYHF2bV1uuFdtaKEiuSQD0\r\n         HI+f/3J5MfNyXTUM0hN7oufIpJB5GotVhrwq8ELR5RhjI/3JCPe78rMDVSM/Csy+kaCT\r\n         SldfrbH94ZoCETkzJVHslbKFWmHBywr1Fs/n+bJA51kB6C62tsCEm1enFyw474xw7gbO\r\n         3ao0HsDOMEOPi6G794fT+K2gvDFurobSacVMqoQjjBbg3em4gDuVUgWUDCgNTs1UbmAW\r\n         2biA==",
+            "x-gm-message-state": "X-Gm-Message-State: AOJu0YxPluakxKjhcvQhU8QjfmtLJZruHkXqbdGEfE2/Yu2n7ELGjgFL\r\n\t6K75bDQbO0pnCAbIAznlHNL4trlEHM2QeI6SdxZnd35H4uqzl/TtG2pnf7sMRaP3y+WeoEJ7C40\r\n\tP4F2Ph/ip+ontotgfssdpocu3IYBnFw5DxXEs",
+            "x-gm-gg": "X-Gm-Gg: AY/fxX70wJvF67PNAykGW7LkZquettPKtrG4j11asVaYGl497JV8X352toz2pDyJgDq\r\n\tvPh3xjSnRD1nLZkPzXlG71DtsrOtRSMwQm7a5lR7/MuK1wHYAjMPVeZWuOtR0b2BG5ufHiQkvlX\r\n\thOl5bYqKYIfuuQt7qPQRqTRiojP6XZBM3MM86ChV3MxmCf3BOzR88qpeLEBo/Ne1kdeO8ITTRaV\r\n\tGGVt7HgjQm3WzKXbeOe7rBW50j8qPJLAbvUM1q/NxtegY1O/4c11OYEWrc46RMMdjNDGK9PZGB3\r\n\tWIkQn9OkWobMBZ3TkS7oHKGQ/Ns=",
+            "x-google-smtp-source": "X-Google-Smtp-Source: AGHT+IHlrotB8iC3d6pqa+g8a8bAcpdURTONUXI8fujXkQRMCfv1dYQPEWSLscUyByLhg8ouxBReaUF2DWe6j6cuhnE=",
+            "mime-version": "MIME-Version: 1.0",
+            "from": "From: Wei Lian Low <weilian.low88@gmail.com>",
+            "date": "Date: Tue, 30 Dec 2025 14:31:35 +0800",
+            "x-gm-features": "X-Gm-Features: AQt7F2o-a1dzQHhT5XsFO3dBXf29xvvH8XmtjpIhLaDraqe_IbPwGfwJFenUz0E",
+            "message-id": "Message-ID: <CAM0KEQfWrxQkw7gar1TTpCLF-FNUmZ86aJKDdcsT6c1yNJBD5g@mail.gmail.com>",
+            "subject": "Subject: Enquiry for SavingsPlus",
+            "to": "To: Wei Lian Low <weilian.low90@gmail.com>",
+            "content-type": "Content-Type: multipart/alternative; boundary=\"0000000000000a64a906472585e1\""
+          },
+          "html": "<div dir=\"ltr\">Hi,<div>I want to open an account with HeiFinance. Could you summarise SavingsPlus, including minimum deposit and all the relevant details?</div><div><br></div><div>Regards,</div><div>Peter Mary Tan</div></div>\n",
+          "text": "Hi,\nI want to open an account with HeiFinance. Could you summarise SavingsPlus,\nincluding minimum deposit and all the relevant details?\n\nRegards,\nPeter Mary Tan\n",
+          "textAsHtml": "<p>Hi,<br/>I want to open an account with HeiFinance. Could you summarise SavingsPlus,<br/>including minimum deposit and all the relevant details?</p><p>Regards,<br/>Peter Mary Tan</p>",
+          "subject": "Enquiry for SavingsPlus",
+          "date": "2025-12-30T06:31:35.000Z",
+          "to": {
+            "value": [
+              {
+                "address": "weilian.low90@gmail.com",
+                "name": "Wei Lian Low"
+              }
+            ],
+            "html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">Wei Lian Low</span> &lt;<a href=\"mailto:weilian.low90@gmail.com\" class=\"mp_address_email\">weilian.low90@gmail.com</a>&gt;</span>",
+            "text": "\"Wei Lian Low\" <weilian.low90@gmail.com>"
+          },
+          "from": {
+            "value": [
+              {
+                "address": "weilian.low88@gmail.com",
+                "name": "Wei Lian Low"
+              }
+            ],
+            "html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">Wei Lian Low</span> &lt;<a href=\"mailto:weilian.low88@gmail.com\" class=\"mp_address_email\">weilian.low88@gmail.com</a>&gt;</span>",
+            "text": "\"Wei Lian Low\" <weilian.low88@gmail.com>"
+          },
+          "messageId": "<CAM0KEQfWrxQkw7gar1TTpCLF-FNUmZ86aJKDdcsT6c1yNJBD5g@mail.gmail.com>"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "AI Agent": [
+      {
+        "json": {
+          "output": "Dear Peter Mary Tan,\n\nThank you for reaching out to HeiFinance Bank.\n\nThe HeiFinance SavingsPlus Account is designed to encourage consistent saving habits by rewarding customers with higher interest when they actively engage with HeiFinance products and services.\n\nHere's a summary including the minimum deposit and other relevant details:\n\n- Base Interest: 0.05% p.a. credited monthly.\n- Bonus Interest: Earn up to 2.00% p.a. with salary credit (min SGD 2,000), eligible card spending (min SGD 500), and 3+ recurring bill payments via our digital channels.\n- Initial Deposit: A minimum of SGD 500 is required to open the account.\n- Balance Maintenance: No monthly fee if the average daily balance is SGD 1,000 or more; otherwise, a SGD 5 fee applies.\n\nFor your reference:\n• Minimum Deposit: SGD 500\n• Interest rates: Base 0.05%, up to 2.00% bonus\n• Fall-below fee: SGD 5 if average daily balance is below SGD 1,000\n\nIf you have any further questions, please do not hesitate to contact us at cust.service@heifinance.com\n\nWarm regards,\n[Your Full Name]\nCustomer Service Officer\nHeiFinance Bank"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Mark a message as read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark a message as read": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Create a draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Store1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "23107150-52ac-4466-8b41-520aa1b88043",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "24b147d28ae5b4fa24dc4307a6ea4227c41fea95cc0dfd47027d1bcb81477058"
+  },
+  "id": "rWpHoyzP2aIRXdya",
+  "tags": []
+}
